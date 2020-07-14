@@ -15,7 +15,12 @@ startmysql:
 		docker run --name django-database-locks-mysql \
 		           -e MYSQL_ROOT_PASSWORD=root \
 		           --rm -p 8877:3306 -d \
+				   --health-cmd "mysqladmin ping" \
+				   --health-interval 10s \
+				   --health-timeout 5s \
+				   --health-retries=5 \
 				   mysql:5
+	# TODO: wait for healthy
 
 startpg:
 	docker inspect django-database-locks-pg | grep '"Running": true' || \
@@ -24,7 +29,12 @@ startpg:
           		   -e POSTGRES_PASSWORD=postgres \
 				   -e POSTGRES_DB=postgres \
 		           --rm -p 8878:5432 -d \
+				   --health-cmd pg_isready \
+				   --health-interval 10s \
+				   --health-timeout 5s \
+				   --health-retries 5 \
 				   postgres:10
+	# TODO: wait for healthy
 
 test: startmysql
 	DJANGO_SETTINGS_MODULE=settings_mysql \

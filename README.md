@@ -1,6 +1,5 @@
-=====================
-django-database-locks
-=====================
+# django-bulk-update-or-create
+
 
 .. image:: https://github.com/fopina/django-database-locks/workflows/tests/badge.svg
     :target: https://github.com/fopina/django-database-locks/actions?query=workflow%3Atests
