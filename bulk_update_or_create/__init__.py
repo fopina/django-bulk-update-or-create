@@ -1,3 +1,1 @@
-from .locks import locked, lock
-
-default_app_config = 'database_locks.apps.DBLocksConfig'
+default_app_config = 'bulk_update_or_create.apps.BulkUpdateOrCreateConfig'
