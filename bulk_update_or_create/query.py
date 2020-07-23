@@ -9,16 +9,39 @@ class BulkUpdateOrCreateMixin:
         match_field='pk',
         batch_size=None,
         case_insensitive_match=False,
+        yield_objects=False,
     ):
         """
 
-        :param objs: 
-        :param match_field: 
-        :param update_fields: 
-        :param batch_size: 
-        :param case_insensitive_match: 
+        :param objs: model instances to be updated or created
+        :param update_fields: fields that will be updated if record already exists (passed on to bulk_update)
+        :param match_field: model field that will match existing records (defaults to "pk")
+        :param batch_size: number of records to process in each batch (defaults to len(objs))
+        :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
+        :param yield_objects: if True, method becomes a generator that will yield a tuple of lists with ([created], [updated]) objects
         """
 
+        r = self.__bulk_update_or_create(
+            objs,
+            update_fields,
+            match_field,
+            batch_size,
+            case_insensitive_match,
+            yield_objects,
+        )
+        if yield_objects:
+            return r
+        return list(r)
+
+    def __bulk_update_or_create(
+        self,
+        objs,
+        update_fields,
+        match_field='pk',
+        batch_size=None,
+        case_insensitive_match=False,
+        yield_objects=False,
+    ):
         if not objs:
             raise ValueError('no objects to update_or_create...')
         if not update_fields:
@@ -65,8 +88,12 @@ class BulkUpdateOrCreateMixin:
             self.bulk_update(to_update, update_fields)
 
             # .create on the remaining (bulk_create won't work on multi-table inheritance models...)
+            created_objs = []
             for obj in obj_map.values():
                 obj.save()
+                created_objs.append(obj)
+            if yield_objects:
+                yield created_objs, to_update
 
 
 class BulkUpdateOrCreateQuerySet(BulkUpdateOrCreateMixin, models.QuerySet):

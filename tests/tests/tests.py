@@ -24,6 +24,39 @@ class Test(TestCase):
             list(range(5)) + list(range(10, 20)),
         )
 
+    def test_update_some_generator(self):
+        self.test_all_create()
+        items = [RandomData(uuid=i + 5, data=i + 10) for i in range(10)]
+        updated_items = RandomData.objects.bulk_update_or_create(
+            items, ['data'], match_field='uuid', yield_objects=True
+        )
+        # not executed yet, just generator
+        self.assertEqual(RandomData.objects.count(), 10)
+        updated_items = list(updated_items)
+        self.assertEqual(RandomData.objects.count(), 15)
+        self.assertEqual(
+            sorted(int(x.data) for x in RandomData.objects.all()),
+            list(range(5)) + list(range(10, 20)),
+        )
+        # one batch
+        self.assertEqual(len(updated_items), 1)
+        # tuple with (created, updated)
+        self.assertEqual(len(updated_items[0]), 2)
+        # 5 were created - 15 to 19
+        self.assertEqual(len(updated_items[0][0]), 5)
+        self.assertEqual(
+            sorted(int(x.data) for x in updated_items[0][0]), list(range(15, 20)),
+        )
+        for x in updated_items[0][0]:
+            self.assertIsNotNone(x.pk)
+        # 5 were updated - 10 to 14 (from 5 to 9)
+        self.assertEqual(len(updated_items[0][1]), 5)
+        self.assertEqual(
+            sorted(int(x.data) for x in updated_items[0][1]), list(range(10, 15)),
+        )
+        for x in updated_items[0][1]:
+            self.assertIsNotNone(x.pk)
+
     def test_errors(self):
         with self.assertRaises(ValueError) as cm:
             RandomData.objects.bulk_update_or_create([], [])
