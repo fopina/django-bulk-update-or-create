@@ -63,7 +63,9 @@ bulk_update_or_create - half half: 0.8407495021820068
 Installation
 ============
 
-> pip install django-bulk-update-or-create
+```
+pip install django-bulk-update-or-create
+```
 
 Add it to your `INSTALLED_APPS` list in `settings.py`
 
@@ -93,6 +95,17 @@ items = [
 ]
 RandomData.objects.bulk_update_or_create(items, ['data'], match_field='uuid')
 ```
+
+* or use the context manager, if you are updating a big number of items, as it manages a batch queue
+
+```python
+with RandomData.objects.bulk_update_or_create_context(['data'], match_field='uuid', batch_size=10) as bulkit:
+    for i in range(10000):
+        bulkit.queue(RandomData(uuid=i, data=i + 20))
+```
+
+`bulk_update_or_create` supports `yield_objects=True` so you can iterate over the created/updated objects.  
+`bulk_update_or_create_context` provides the same information to the callback function specified as `status_cb`
 
 Docs
 ====
