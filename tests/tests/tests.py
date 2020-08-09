@@ -8,7 +8,11 @@ from tests.models import RandomData
 class Test(TestCase):
     def test_all_create(self):
         items = [RandomData(uuid=i, data=i) for i in range(10)]
-        RandomData.objects.bulk_update_or_create(items, ['data'], match_field='uuid')
+        # 1 select + 10 creates, all new
+        with self.assertNumQueries(11):
+            RandomData.objects.bulk_update_or_create(
+                items, ['data'], match_field='uuid'
+            )
         self.assertEqual(RandomData.objects.count(), 10)
         self.assertEqual(
             sorted(int(x.data) for x in RandomData.objects.all()), list(range(10))
@@ -17,11 +21,28 @@ class Test(TestCase):
     def test_update_some(self):
         self.test_all_create()
         items = [RandomData(uuid=i + 5, data=i + 10) for i in range(10)]
-        RandomData.objects.bulk_update_or_create(items, ['data'], match_field='uuid')
+        # 1 select, 1 bulk update, 5 create
+        with self.assertNumQueries(7):
+            RandomData.objects.bulk_update_or_create(
+                items, ['data'], match_field='uuid'
+            )
         self.assertEqual(RandomData.objects.count(), 15)
         self.assertEqual(
             sorted(int(x.data) for x in RandomData.objects.all()),
             list(range(5)) + list(range(10, 20)),
+        )
+
+    def test_all_update(self):
+        self.test_all_create()
+        items = [RandomData(uuid=i, data=i + 10) for i in range(10)]
+        # 1 select, 1 bulk update
+        with self.assertNumQueries(2):
+            RandomData.objects.bulk_update_or_create(
+                items, ['data'], match_field='uuid'
+            )
+        self.assertEqual(RandomData.objects.count(), 10)
+        self.assertEqual(
+            sorted(int(x.data) for x in RandomData.objects.all()), list(range(10, 20)),
         )
 
     def test_update_some_generator(self):
@@ -105,3 +126,43 @@ class Test(TestCase):
         )
         self.assertEqual(RandomData.objects.count(), 2)
         self.assertEqual(sorted(x.data for x in RandomData.objects.all()), ['X', 'x'])
+
+    def test_update_some_with_context_manager(self):
+        self.test_all_create()
+        with self.assertNumQueries(7):
+            with RandomData.objects.bulk_update_or_create_context(
+                ['data'], match_field='uuid', batch_size=500
+            ) as bulkit:
+                for i in range(10):
+                    bulkit.queue(RandomData(uuid=i + 5, data=i + 10))
+        self.assertEqual(RandomData.objects.count(), 15)
+        self.assertEqual(
+            sorted(int(x.data) for x in RandomData.objects.all()),
+            list(range(5)) + list(range(10, 20)),
+        )
+
+        # smaller batch_size to test more than 1 batch and test status_cb
+        cb_calls = []
+
+        def _cb(x):
+            # nothing created
+            self.assertEqual(x[0], [])
+            cb_calls.extend(x[1])
+
+        # 4 all-update batches = 8 queries
+        with self.assertNumQueries(8):
+            with RandomData.objects.bulk_update_or_create_context(
+                ['data'], match_field='uuid', batch_size=3, status_cb=_cb
+            ) as bulkit:
+                for i in range(10):
+                    bulkit.queue(RandomData(uuid=i, data=i + 20))
+        self.assertEqual(RandomData.objects.count(), 15)
+        self.assertEqual(
+            # 20 to 29 ... 15 to 19
+            sorted(int(x.data) for x in RandomData.objects.all()),
+            list(range(15, 30)),
+        )
+        self.assertEqual(len(cb_calls), 10)
+        for i in range(10):
+            self.assertEqual(cb_calls[i].uuid, i)
+            self.assertEqual(cb_calls[i].data, i + 20)

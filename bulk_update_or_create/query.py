@@ -2,6 +2,35 @@ from django.db import models
 
 
 class BulkUpdateOrCreateMixin:
+    def bulk_update_or_create_context(
+        self,
+        update_fields,
+        match_field='pk',
+        batch_size=100,
+        case_insensitive_match=False,
+        status_cb=None,
+    ):
+        """
+        Helper method that returns a context manager (_BulkUpdateOrCreateContextManager) that makes it easier to handle
+        a stream of objects with unknown size.
+        Call `.queue(obj)` and whenever `batch_size` is reached or the context terminates, this context manager will call
+        `bulk_update_or_create` on the queue
+
+        :param update_fields: fields that will be updated if record already exists (passed on to bulk_update)
+        :param match_field: model field that will match existing records (defaults to "pk")
+        :param batch_size: number of records to process in each batch (defaults to 100)
+        :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
+        :param status_cb: if set to a callable, status_cb is called a tuple of lists with ([created], [updated]) objects as they're yielded
+        """
+        return _BulkUpdateOrCreateContextManager(
+            self,
+            update_fields,
+            batch_size=batch_size,
+            status_cb=status_cb,
+            match_field=match_field,
+            case_insensitive_match=case_insensitive_match,
+        )
+
     def bulk_update_or_create(
         self,
         objs,
@@ -98,3 +127,43 @@ class BulkUpdateOrCreateMixin:
 
 class BulkUpdateOrCreateQuerySet(BulkUpdateOrCreateMixin, models.QuerySet):
     pass
+
+
+class _BulkUpdateOrCreateContextManager:
+    def __init__(
+        self, queryset, update_fields, batch_size=500, status_cb=None, **kwargs
+    ):
+        self._queue = []
+        self._queryset = queryset
+        self._batch_size = batch_size
+        assert status_cb is None or callable(status_cb)
+        self._cb = status_cb
+        self._fields = update_fields
+        self._kwargs = kwargs
+
+    def queue(self, obj):
+        self._queue.append(obj)
+        if len(self._queue) >= self._batch_size:
+            self.dump_queue()
+
+    def dump_queue(self):
+        if not self._queue:
+            return
+
+        r = self._queryset.bulk_update_or_create(
+            self._queue,
+            self._fields,
+            yield_objects=self._cb is not None,
+            **self._kwargs,
+        )
+        if self._cb is not None:
+            for st in r:
+                self._cb(st)
+
+        self._queue = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.dump_queue()
