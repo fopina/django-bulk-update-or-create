@@ -214,3 +214,46 @@ class Test(TestCase):
 
     def assertSum(self, total):
         self.assertEqual(sum(int(x.data) for x in RandomData.objects.all()), total)
+
+    def test_multiple_match_fields_update(self):
+        items = [RandomData(uuid=i, value=i % 5, data=i) for i in range(10)]
+        RandomData.objects.bulk_create(items)
+
+        items = [RandomData(uuid=i, value=i % 5, data=i + 10) for i in range(10)]
+        # 1 select, 1 bulk update
+        with self.assertNumQueries(2):
+            RandomData.objects.bulk_update_or_create(items, ['data'], match_field=('uuid', 'value'))
+
+        self.assertEqual(RandomData.objects.count(), 10)
+        self.assertEqual(
+            sorted(int(x.data) for x in RandomData.objects.all()),
+            list(range(10, 20)),
+        )
+
+    def test_multiple_match_fields_update_create(self):
+        items = [RandomData(uuid=i, value=i % 5, data=i) for i in range(10)]
+        RandomData.objects.bulk_create(items)
+
+        items = [RandomData(uuid=i + 5, value=i % 5, data=i + 10) for i in range(10)]
+        # 1 select, 1 bulk update, 5 inserts
+        with self.assertNumQueries(7):
+            RandomData.objects.bulk_update_or_create(items, ['data'], match_field=('uuid', 'value'))
+        self.assertEqual(RandomData.objects.count(), 15)
+        self.assertEqual(
+            list(int(x.data) for x in RandomData.objects.order_by('uuid')),
+            [*range(5), *range(10, 15), *range(15, 20)],
+        )
+
+    def test_multiple_match_fields_update_pk(self):
+        items = [RandomData(uuid=i, value=i % 5, data=str(i)) for i in range(10)]
+        RandomData.objects.bulk_create(items)
+
+        items = [RandomData(uuid=i + 100, value=i % 5, data=str(i)) for i in range(10)]
+        # 1 select, 1 bulk update
+        with self.assertNumQueries(2):
+            RandomData.objects.bulk_update_or_create(items, ['uuid'], match_field=('data', 'value'))
+        self.assertEqual(RandomData.objects.count(), 10)
+        self.assertEqual(
+            list(x.uuid for x in RandomData.objects.order_by('data', 'value')),
+            list(range(100, 110)),
+        )

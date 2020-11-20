@@ -15,6 +15,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('uuid', models.IntegerField(unique=True)),
+                ('value', models.IntegerField(default=0)),
                 ('data', models.CharField(blank=True, max_length=200, null=True)),
             ],
         ),
