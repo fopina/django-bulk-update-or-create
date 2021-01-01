@@ -19,7 +19,7 @@ Searching online shows that this does indeed happen to quite a few people though
 * `bulk_update` does some nice voodoo to update several records with the same `UPDATE` statement (using a huge `WHERE` condition together with `CASE`), but you need to be sure they all exist
 * UPSERTs [(INSERT .. ON DUPLICATE KEY UPDATE](https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html)) look interesting (TODO on different package) but they will be retricted by `bulk_create` limitations ==> cannot use on models with multi-table inheritance
 
-This package tries to tackle this introducnig `bulk_update_or_create` to model QuerySet/Manager:
+This package tries to tackle this introducing `bulk_update_or_create` to model QuerySet/Manager:
 * `update_or_create`: `(1 SELECT + 1 INSERT/UPDATE) * N`
 * `bulk_update_or_create`: `1 BIG_SELECT + 1 BIG_UPDATE + (lte_N) INSERT`
 
