@@ -1,5 +1,3 @@
-from django.core.management import call_command
-from django.core.management.base import BaseCommand
 from django.test import TestCase
 
 from tests.models import RandomData
@@ -80,11 +78,12 @@ class Test(TestCase):
 
     def test_errors(self):
         with self.assertRaises(ValueError) as cm:
-            RandomData.objects.bulk_update_or_create([], [])
-        self.assertEqual(cm.exception.args, ('no objects to update_or_create...',))
-        with self.assertRaises(ValueError) as cm:
             RandomData.objects.bulk_update_or_create([None], [])
         self.assertEqual(cm.exception.args, ('update_fields cannot be empty',))
+
+        with self.assertRaises(ValueError) as cm:
+            RandomData.objects.bulk_update_or_create([None], ['x'], batch_size=-1)
+        self.assertEqual(cm.exception.args, ('Batch size must be a positive integer.',))
 
         with self.assertRaises(ValueError) as cm:
             RandomData.objects.bulk_update_or_create(
@@ -166,3 +165,24 @@ class Test(TestCase):
         for i in range(10):
             self.assertEqual(cb_calls[i].uuid, i)
             self.assertEqual(cb_calls[i].data, i + 20)
+    
+    def test_context_manager_exact_batch_size(self):
+        # test made to hit *empty* queue on context manager __exit__()!
+        with self.assertNumQueries(11):
+            with RandomData.objects.bulk_update_or_create_context(
+                ['data'], match_field='uuid', batch_size=10
+            ) as bulkit:
+                for i in range(10):
+                    bulkit.queue(RandomData(uuid=i + 5, data=i + 10))
+
+    def test_empty_objs(self):
+        """
+        test change of behaviour for empty objs to match bulk_update
+        https://github.com/fopina/django-bulk-update-or-create/issues/10
+        """
+        with self.assertNumQueries(0):
+            RandomData.objects.bulk_update([], fields=['data'])
+        with self.assertNumQueries(0):
+            RandomData.objects.bulk_update_or_create(
+                    [], ['x'], match_field='uuid'
+            )
