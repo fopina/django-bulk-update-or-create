@@ -71,13 +71,16 @@ class BulkUpdateOrCreateMixin:
         case_insensitive_match=False,
         yield_objects=False,
     ):
-        if not objs:
-            raise ValueError('no objects to update_or_create...')
+        if batch_size is not None and batch_size < 0:
+            raise ValueError('Batch size must be a positive integer.')
         if not update_fields:
             raise ValueError('update_fields cannot be empty')
 
         # generators not supported (for now?), as bulk_update doesn't either
         objs = list(objs)
+        if not objs:
+            return
+
         if batch_size is None:
             batch_size = len(objs)
 
