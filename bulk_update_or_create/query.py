@@ -1,3 +1,4 @@
+from types import TracebackType
 from typing import Any, Callable, Generator, List, Optional, Tuple, Type, Union
 
 from django.db import models
@@ -12,7 +13,7 @@ class BulkUpdateOrCreateMixin:
         batch_size: int = 100,
         case_insensitive_match: bool = False,
         status_cb: Optional[
-            Callable[Tuple[List[QuerySet], List[QuerySet]], Any]
+            Callable[[Tuple[List[Model], List[Model]]], Any]
         ] = None,
     ):
         """
@@ -45,8 +46,8 @@ class BulkUpdateOrCreateMixin:
         case_insensitive_match: bool = False,
         yield_objects: bool = False,
     ) -> Union[
-            Generator[Tuple[List[QuerySet], List[QuerySet]], None, None],
-            List[Tuple[List[QuerySet], List[QuerySet]]]
+            Generator[Tuple[List[Model], List[Model]], None, None],
+            List[Tuple[List[Model], List[Model]]]
         ]:
         """
 
@@ -79,7 +80,7 @@ class BulkUpdateOrCreateMixin:
         case_insensitive_match: bool = False,
         yield_objects: bool = False,
     ) -> Union[
-            Generator[Tuple[List[QuerySet], List[QuerySet]], None, None],
+            Generator[Tuple[List[Model], List[Model]], None, None],
             None
         ]:
         if not objs:
@@ -147,7 +148,7 @@ class _BulkUpdateOrCreateContextManager:
         update_fields: List[str],
         batch_size: int = 500,
         status_cb: Optional[
-            Callable[Tuple[List[QuerySet], List[QuerySet]], Any]
+            Callable[[Tuple[List[Model], List[Model]]], Any]
         ] = None,
         **kwargs: Optional[Any]
     ):
