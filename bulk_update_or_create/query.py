@@ -71,10 +71,17 @@ class BulkUpdateOrCreateMixin:
         case_insensitive_match=False,
         yield_objects=False,
     ):
+        # validations like bulk_update
         if batch_size is not None and batch_size < 0:
             raise ValueError('Batch size must be a positive integer.')
         if not update_fields:
             raise ValueError('update_fields cannot be empty')
+        _match_field = self.model._meta.get_field(match_field)
+        _update_fields = [self.model._meta.get_field(name) for name in update_fields]
+        if any(not f.concrete or f.many_to_many for f in _update_fields):
+            raise ValueError('bulk_update_or_create() can only be used with concrete fields.')
+        if any(f.primary_key for f in _update_fields):
+            raise ValueError('bulk_update_or_create() cannot be used with primary key fields.')
 
         # generators not supported (for now?), as bulk_update doesn't either
         objs = list(objs)
@@ -84,28 +91,22 @@ class BulkUpdateOrCreateMixin:
         if batch_size is None:
             batch_size = len(objs)
 
-        # validate that all objects have the required fields
-        for obj in objs:
-            if not hasattr(obj, match_field):
-                raise ValueError(
-                    f'some object does not have the match_field {match_field}'
-                )
-            for _f in update_fields:
-                if not hasattr(obj, _f):
-                    raise ValueError(f'some object does not have the update_field {_f}')
-
         batches = (objs[i : i + batch_size] for i in range(0, len(objs), batch_size))
 
         if case_insensitive_match:
 
             def _cased_key(obj):
-                k = getattr(obj, match_field)
+                # use to_python to coerce value same way it's done when fetched from DB
+                # https://github.com/fopina/django-bulk-update-or-create/issues/11
+                k = _match_field.to_python(_match_field.value_from_object(obj))
                 return k.lower() if hasattr(k, 'lower') else k
 
         else:
 
             def _cased_key(obj):  # no-op
-                return getattr(obj, match_field)
+                # use to_python to coerce value same way it's done when fetched from DB
+                # https://github.com/fopina/django-bulk-update-or-create/issues/11
+                return _match_field.to_python(_match_field.value_from_object(obj))
 
         for batch in batches:
             obj_map = {_cased_key(obj): obj for obj in batch}
