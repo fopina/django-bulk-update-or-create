@@ -10,6 +10,19 @@ on:
     branches: [ master ]
 
 jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install tox
+      run: pip install tox
+    - name: Style check
+      run : tox -e style
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -46,9 +59,6 @@ jobs:
 
     - name: Install tox
       run: pip install tox
-
-    - name: Style check
-      run : tox -e style
     - name: Toxit
       run: tox -e py-${{ matrix.database }} -v
 
