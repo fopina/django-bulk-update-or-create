@@ -150,6 +150,12 @@ class _BulkUpdateOrCreateContextManager:
         if len(self._queue) >= self._batch_size:
             self.dump_queue()
 
+    def queue_obj(self, **kwargs):
+        """
+        proxy method to forward kwargs to self.model instantiation before calling queue()
+        """
+        return self.queue(self._queryset.model(**kwargs))
+
     def dump_queue(self):
         if not self._queue:
             return

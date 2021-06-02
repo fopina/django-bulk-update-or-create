@@ -172,6 +172,16 @@ class Test(TestCase):
             ) as bulkit:
                 for i in range(10):
                     bulkit.queue(RandomData(uuid=i + 5, data=i + 10))
+        self.assertSum(145)
+
+    def test_context_manager_queue_kwargs(self):
+        with self.assertNumQueries(11):
+            with RandomData.objects.bulk_update_or_create_context(
+                ['data'], match_field='uuid', batch_size=10
+            ) as bulkit:
+                for i in range(10):
+                    bulkit.queue_obj(uuid=i + 5, data=i + 10)
+        self.assertSum(145)
 
     def test_empty_objs(self):
         """
@@ -189,18 +199,18 @@ class Test(TestCase):
         eg: using string values in model IntegerFields cause obj_map lookups to fail on existing objects
         """
 
-        def _sum_assert(total):
-            self.assertEqual(sum(int(x.data) for x in RandomData.objects.all()), total)
-
         self.test_all_create()
-        _sum_assert(45)
+        self.assertSum(45)
         # this works
         RandomData.objects.bulk_update_or_create(
             [RandomData(uuid=i, data=i + 1) for i in range(10)], ['data'], match_field='uuid'
         )
-        _sum_assert(55)
+        self.assertSum(55)
         # but this *DID* not - it does now though!
         RandomData.objects.bulk_update_or_create(
             [RandomData(uuid=str(i), data=i + 2) for i in range(10)], ['data'], match_field='uuid'
         )
-        _sum_assert(65)
+        self.assertSum(65)
+
+    def assertSum(self, total):
+        self.assertEqual(sum(int(x.data) for x in RandomData.objects.all()), total)
