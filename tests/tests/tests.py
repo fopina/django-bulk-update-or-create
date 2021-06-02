@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.core.exceptions import FieldDoesNotExist
 
 from tests.models import RandomData
 
@@ -82,23 +83,21 @@ class Test(TestCase):
         self.assertEqual(cm.exception.args, ('update_fields cannot be empty',))
 
         with self.assertRaises(ValueError) as cm:
-            RandomData.objects.bulk_update_or_create([None], ['x'], batch_size=-1)
+            RandomData.objects.bulk_update_or_create([None], ['data'], batch_size=-1)
         self.assertEqual(cm.exception.args, ('Batch size must be a positive integer.',))
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(FieldDoesNotExist) as cm:
             RandomData.objects.bulk_update_or_create(
                 [RandomData(uuid=1, data='x')], ['data'], match_field='x'
             )
         self.assertEqual(
-            cm.exception.args, ('some object does not have the match_field x',)
+            cm.exception.args, ("RandomData has no field named 'x'",)
         )
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(FieldDoesNotExist) as cm:
             RandomData.objects.bulk_update_or_create(
                 [RandomData(uuid=1, data='x')], ['x'], match_field='uuid'
             )
-        self.assertEqual(
-            cm.exception.args, ('some object does not have the update_field x',)
-        )
+        self.assertEqual(cm.exception.args, ("RandomData has no field named 'x'",))
 
     def test_case_sensitivity(self):
         """
@@ -184,5 +183,24 @@ class Test(TestCase):
             RandomData.objects.bulk_update([], fields=['data'])
         with self.assertNumQueries(0):
             RandomData.objects.bulk_update_or_create(
-                    [], ['x'], match_field='uuid'
+                    [], ['data'], match_field='uuid'
             )
+
+    def test_keyerror(self):
+        """
+        test for issue https://github.com/fopina/django-bulk-update-or-create/issues/11
+        eg: using string values in model IntegerFields cause obj_map lookups to fail on existing objects
+        """
+        def _sum_assert(total):
+            self.assertEqual(
+                sum(int(x.data) for x in RandomData.objects.all()),
+                total
+            )
+        self.test_all_create()
+        _sum_assert(45)
+        # this works
+        RandomData.objects.bulk_update_or_create([RandomData(uuid=i, data=i+1) for i in range(10)], ['data'], match_field='uuid')
+        _sum_assert(55)
+        # but this *DID* not - it does now though!
+        RandomData.objects.bulk_update_or_create([RandomData(uuid=str(i), data=i+2) for i in range(10)], ['data'], match_field='uuid')
+        _sum_assert(65)
