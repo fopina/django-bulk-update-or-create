@@ -13,14 +13,15 @@ class BulkUpdateOrCreateMixin:
         """
         Helper method that returns a context manager (_BulkUpdateOrCreateContextManager) that makes it easier to handle
         a stream of objects with unknown size.
-        Call `.queue(obj)` and whenever `batch_size` is reached or the context terminates, this context manager will call
-        `bulk_update_or_create` on the queue
+        Call `.queue(obj)` and whenever `batch_size` is reached or the context terminates, this context manager will
+        call `bulk_update_or_create` on the queue
 
         :param update_fields: fields that will be updated if record already exists (passed on to bulk_update)
         :param match_field: model field that will match existing records (defaults to "pk")
         :param batch_size: number of records to process in each batch (defaults to 100)
         :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
-        :param status_cb: if set to a callable, status_cb is called a tuple of lists with ([created], [updated]) objects as they're yielded
+        :param status_cb: if set to a callable, status_cb is called a tuple of lists with ([created],
+            [updated]) objects as they're yielded
         """
         return _BulkUpdateOrCreateContextManager(
             self,
@@ -47,7 +48,8 @@ class BulkUpdateOrCreateMixin:
         :param match_field: model field that will match existing records (defaults to "pk")
         :param batch_size: number of records to process in each batch (defaults to len(objs))
         :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
-        :param yield_objects: if True, method becomes a generator that will yield a tuple of lists with ([created], [updated]) objects
+        :param yield_objects: if True, method becomes a generator that will yield a tuple of lists
+            with ([created], [updated]) objects
         """
 
         r = self.__bulk_update_or_create(
@@ -134,9 +136,7 @@ class BulkUpdateOrCreateQuerySet(BulkUpdateOrCreateMixin, models.QuerySet):
 
 
 class _BulkUpdateOrCreateContextManager:
-    def __init__(
-        self, queryset, update_fields, batch_size=500, status_cb=None, **kwargs
-    ):
+    def __init__(self, queryset, update_fields, batch_size=500, status_cb=None, **kwargs):
         self._queue = []
         self._queryset = queryset
         self._batch_size = batch_size

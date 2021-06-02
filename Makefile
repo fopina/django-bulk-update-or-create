@@ -1,11 +1,18 @@
 .PHONY: flake8 test coverage style style_check
 
 style:
-	black --target-version=py36 bulk_update_or_create tests setup.py
+	black --target-version=py36 \
+	      --line-length=120 \
+		  --skip-string-normalization \
+		  bulk_update_or_create tests setup.py
 	flake8 bulk_update_or_create tests
 
-style_check:
-	black --target-version=py36 --check bulk_update_or_create tests setup.py
+style_check: flake8
+	black --target-version=py36 \
+	      --line-length=120 \
+		  --skip-string-normalization \
+		  --check \
+		  bulk_update_or_create tests setup.py
 
 flake8:
 	flake8 bulk_update_or_create tests
