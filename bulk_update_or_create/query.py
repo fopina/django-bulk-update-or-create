@@ -45,7 +45,7 @@ class BulkUpdateOrCreateMixin:
 
         :param objs: model instances to be updated or created
         :param update_fields: fields that will be updated if record already exists (passed on to bulk_update)
-        :param match_field: model field that will match existing records (defaults to "pk")
+        :param match_field: model fields that will match existing records (defaults to ["pk"])
         :param batch_size: number of records to process in each batch (defaults to len(objs))
         :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
         :param yield_objects: if True, method becomes a generator that will yield a tuple of lists
@@ -64,6 +64,49 @@ class BulkUpdateOrCreateMixin:
             return r
         return list(r)
 
+    def __bulk_update_or_create_inner_methods(self, match_fields, case_insensitive_match):
+        single_match_field = len(match_fields) == 1
+
+        def _obj_key_getter_sensitive(obj):
+            # use to_python to coerce value same way it's done when fetched from DB
+            # https://github.com/fopina/django-bulk-update-or-create/issues/11
+            # k = _match_field.to_python(_match_field.value_from_object(obj))
+            return tuple(match_field.to_python(match_field.value_from_object(obj)) for match_field in match_fields)
+
+        _obj_key_getter = _obj_key_getter_sensitive
+
+        if case_insensitive_match:
+
+            def _obj_key_getter(obj):
+                return tuple(
+                    map(
+                        lambda v: v.lower() if hasattr(v, 'lower') else v,
+                        _obj_key_getter_sensitive(obj),
+                    )
+                )
+
+        if single_match_field:
+
+            def _obj_filter(obj_map):
+                return models.Q(**{f'{match_fields[0].name}__in': obj_map.keys()})
+
+            def _obj_key_getter_single(obj):
+                return _obj_key_getter(obj)[0]
+
+            return _obj_key_getter_single, _obj_filter
+        else:
+
+            def _obj_filter(obj_map):
+                return models.Q(
+                    *(
+                        models.Q(**{k.name: obj_key[i] for i, k in enumerate(match_fields)})
+                        for obj_key in obj_map.keys()
+                    ),
+                    _connector=models.Q.OR,
+                )
+
+            return _obj_key_getter, _obj_filter
+
     def __bulk_update_or_create(
         self,
         objs,
@@ -78,7 +121,8 @@ class BulkUpdateOrCreateMixin:
             raise ValueError('Batch size must be a positive integer.')
         if not update_fields:
             raise ValueError('update_fields cannot be empty')
-        _match_field = self.model._meta.get_field(match_field)
+        match_field = (match_field,) if isinstance(match_field, str) else match_field
+        _match_fields = [self.model._meta.get_field(name) for name in match_field]
         _update_fields = [self.model._meta.get_field(name) for name in update_fields]
         if any(not f.concrete or f.many_to_many for f in _update_fields):
             raise ValueError('bulk_update_or_create() can only be used with concrete fields.')
@@ -95,31 +139,19 @@ class BulkUpdateOrCreateMixin:
 
         batches = (objs[i : i + batch_size] for i in range(0, len(objs), batch_size))
 
-        if case_insensitive_match:
-
-            def _cased_key(obj):
-                # use to_python to coerce value same way it's done when fetched from DB
-                # https://github.com/fopina/django-bulk-update-or-create/issues/11
-                k = _match_field.to_python(_match_field.value_from_object(obj))
-                return k.lower() if hasattr(k, 'lower') else k
-
-        else:
-
-            def _cased_key(obj):  # no-op
-                # use to_python to coerce value same way it's done when fetched from DB
-                # https://github.com/fopina/django-bulk-update-or-create/issues/11
-                return _match_field.to_python(_match_field.value_from_object(obj))
+        _obj_key_getter, _obj_filter = self.__bulk_update_or_create_inner_methods(_match_fields, case_insensitive_match)
 
         for batch in batches:
-            obj_map = {_cased_key(obj): obj for obj in batch}
+            obj_map = {_obj_key_getter(obj): obj for obj in batch}
 
             # mass select for bulk_update on existing ones
-            to_update = list(self.filter(**{match_field + '__in': obj_map.keys()}))
+            to_update = self.filter(_obj_filter(obj_map))
+
             for to_u in to_update:
-                obj = obj_map[_cased_key(to_u)]
+                obj = obj_map[_obj_key_getter(to_u)]
                 for _f in update_fields:
                     setattr(to_u, _f, getattr(obj, _f))
-                del obj_map[_cased_key(to_u)]
+                del obj_map[_obj_key_getter(to_u)]
             self.bulk_update(to_update, update_fields)
 
             # .create on the remaining (bulk_create won't work on multi-table inheritance models...)
