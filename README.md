@@ -67,7 +67,13 @@ Installation
 pip install django-bulk-update-or-create
 ```
 
-Add it to your `INSTALLED_APPS` list in `settings.py`
+```py
+INSTALLED_APPS = [
+    ...
+    'bulk_update_or_create',
+    ...
+]
+```
 
 Usage
 =====
