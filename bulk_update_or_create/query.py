@@ -49,7 +49,8 @@ class BulkUpdateOrCreateMixin:
         :param batch_size: number of records to process in each batch (defaults to len(objs))
         :param case_insensitive_match: set to True if using MySQL with "ci" collations (defaults to False)
         :param yield_objects: if True, method becomes a generator that will yield a tuple of lists
-            with ([created], [updated]) objects
+            with ([created], [updated]) objects. This is one tuple per each `batch`. If this is False,
+            a single tuple of lists with ([created], [updated]) will be returned.
         """
 
         r = self.__bulk_update_or_create(
@@ -161,6 +162,7 @@ class BulkUpdateOrCreateMixin:
                 created_objs.append(obj)
             if yield_objects:
                 yield created_objs, to_update
+        return created_objs, to_update
 
 
 class BulkUpdateOrCreateQuerySet(BulkUpdateOrCreateMixin, models.QuerySet):
