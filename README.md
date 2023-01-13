@@ -2,7 +2,7 @@
 
 
 [![tests](https://github.com/fopina/django-bulk-update-or-create/workflows/tests/badge.svg)](https://github.com/fopina/django-bulk-update-or-create/actions?query=workflow%3Atests)
-[![Test coverage status](https://codecov.io/gh/fopina/django-bulk-update-or-create/branch/master/graph/badge.svg)](https://codecov.io/gh/fopina/django-bulk-update-or-create)
+[![Test coverage status](https://codecov.io/gh/fopina/django-bulk-update-or-create/branch/main/graph/badge.svg)](https://codecov.io/gh/fopina/django-bulk-update-or-create)
 [![Current version on PyPi](https://img.shields.io/pypi/v/django-bulk-update-or-create)](https://pypi.org/project/django-bulk-update-or-create/)
 [![monthly downloads](https://img.shields.io/pypi/dm/django-bulk-update-or-create)](https://pypi.org/project/django-bulk-update-or-create/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-bulk-update-or-create)
