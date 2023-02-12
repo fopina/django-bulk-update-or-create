@@ -21,14 +21,12 @@ class Command(BaseCommand):
     def _loop(self, n=1000, offset=0, data_offset=0):
         for i in range(n):
             RandomData.objects.update_or_create(
-                uuid=i + offset, defaults={'data': str(i + offset + data_offset)},
+                uuid=i + offset,
+                defaults={'data': str(i + offset + data_offset)},
             )
 
     def _bulk(self, n=1000, offset=0, data_offset=0):
-        items = [
-            RandomData(uuid=i + offset, data=str(i + offset + data_offset))
-            for i in range(n)
-        ]
+        items = [RandomData(uuid=i + offset, data=str(i + offset + data_offset)) for i in range(n)]
         RandomData.objects.bulk_update_or_create(items, ['data'], match_field='uuid')
 
     def _clear(self):

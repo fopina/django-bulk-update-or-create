@@ -2,7 +2,7 @@
 
 
 [![tests](https://github.com/fopina/django-bulk-update-or-create/workflows/tests/badge.svg)](https://github.com/fopina/django-bulk-update-or-create/actions?query=workflow%3Atests)
-[![Test coverage status](https://codecov.io/gh/fopina/django-bulk-update-or-create/branch/master/graph/badge.svg)](https://codecov.io/gh/fopina/django-bulk-update-or-create)
+[![Test coverage status](https://codecov.io/gh/fopina/django-bulk-update-or-create/branch/main/graph/badge.svg)](https://codecov.io/gh/fopina/django-bulk-update-or-create)
 [![Current version on PyPi](https://img.shields.io/pypi/v/django-bulk-update-or-create)](https://pypi.org/project/django-bulk-update-or-create/)
 [![monthly downloads](https://img.shields.io/pypi/dm/django-bulk-update-or-create)](https://pypi.org/project/django-bulk-update-or-create/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-bulk-update-or-create)
@@ -67,7 +67,13 @@ Installation
 pip install django-bulk-update-or-create
 ```
 
-Add it to your `INSTALLED_APPS` list in `settings.py`
+```py
+INSTALLED_APPS = [
+    ...
+    'bulk_update_or_create',
+    ...
+]
+```
 
 Usage
 =====
@@ -118,5 +124,6 @@ ToDo
 * [ ]  Docs!
 * [ ]  Add option to use `bulk_create` for creates: assert model is not multi-table, if enabled
 * [ ]  Fix the collation mess: the keyword arg `case_insensitive_match` should be dropped and collation detected in runtime
-* [ ]  Add support for multiple `match_field` - probably will need to use `WHERE (K1=X and K2=Y) or (K1=.. and K2=..)` instead of `IN` for those, as that SQL standard doesn't seem widely adopted yet
+* [x]  Add support for multiple `match_field` - probably will need to use `WHERE (K1=X and K2=Y) or (K1=.. and K2
+=..)` instead of `IN` for those, as that SQL standard doesn't seem widely adopted yet
 * [ ]  Link to `UPSERT` alternative package once done!

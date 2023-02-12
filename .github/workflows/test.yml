@@ -5,16 +5,29 @@ name: tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install tox
+      run: pip install tox
+    - name: Style check
+      run : tox -e style
+
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
         database: [sqlite, mysql, postgresql]
 
     services:
@@ -43,18 +56,15 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install tox
-      run: |
-        pip install tox
-    - name: Toxit
-      run: |
-        tox -e py-${{ matrix.database }} -v
-    
-    - name: coverage xml
-      run: |
-        .tox/py-mysql/bin/coverage xml
-      if: ${{ matrix.python-version == 3.7 && matrix.database == 'mysql' }}
 
+    - name: Install tox
+      run: pip install tox
+    - name: Toxit
+      run: tox -e py-${{ matrix.database }} -v
+
+    - name: coverage xml
+      run: .tox/py-mysql/bin/coverage xml
+      if: ${{ matrix.python-version == 3.7 && matrix.database == 'mysql' }}
     - uses: codecov/codecov-action@v1
       with:
         fail_ci_if_error: true
