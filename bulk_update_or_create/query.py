@@ -1,14 +1,20 @@
+from types import TracebackType
+from typing import Any, Callable, Generator, List, Optional, Tuple, Type, Union
+
 from django.db import models
+from django.db.models import Model, QuerySet
 
 
 class BulkUpdateOrCreateMixin:
     def bulk_update_or_create_context(
         self,
-        update_fields,
-        match_field='pk',
-        batch_size=100,
-        case_insensitive_match=False,
-        status_cb=None,
+        update_fields: List[str],
+        match_field: str = 'pk',
+        batch_size: int = 100,
+        case_insensitive_match: bool = False,
+        status_cb: Optional[
+            Callable[[Tuple[List[Model], List[Model]]], Any]
+        ] = None,
     ):
         """
         Helper method that returns a context manager (_BulkUpdateOrCreateContextManager) that makes it easier to handle
@@ -34,13 +40,16 @@ class BulkUpdateOrCreateMixin:
 
     def bulk_update_or_create(
         self,
-        objs,
-        update_fields,
-        match_field='pk',
-        batch_size=None,
-        case_insensitive_match=False,
-        yield_objects=False,
-    ):
+        objs: List[Model],
+        update_fields: List[str],
+        match_field: str = 'pk',
+        batch_size: int = 100,
+        case_insensitive_match: bool = False,
+        yield_objects: bool = False,
+    ) -> Union[
+            Generator[Tuple[List[Model], List[Model]], None, None],
+            List[Tuple[List[Model], List[Model]]]
+        ]:
         """
 
         :param objs: model instances to be updated or created
@@ -110,13 +119,16 @@ class BulkUpdateOrCreateMixin:
 
     def __bulk_update_or_create(
         self,
-        objs,
-        update_fields,
-        match_field='pk',
-        batch_size=None,
-        case_insensitive_match=False,
-        yield_objects=False,
-    ):
+        objs: List[Model],
+        update_fields: List[str],
+        match_field: str = 'pk',
+        batch_size: Optional[int] = None,
+        case_insensitive_match: bool = False,
+        yield_objects: bool = False,
+    ) -> Union[
+            Generator[Tuple[List[Model], List[Model]], None, None],
+            None
+        ]:
         # validations like bulk_update
         if batch_size is not None and batch_size < 0:
             raise ValueError('Batch size must be a positive integer.')
@@ -170,7 +182,16 @@ class BulkUpdateOrCreateQuerySet(BulkUpdateOrCreateMixin, models.QuerySet):
 
 
 class _BulkUpdateOrCreateContextManager:
-    def __init__(self, queryset, update_fields, batch_size=500, status_cb=None, **kwargs):
+    def __init__(
+        self,
+        queryset: QuerySet,
+        update_fields: List[str],
+        batch_size: int = 500,
+        status_cb: Optional[
+            Callable[[Tuple[List[Model], List[Model]]], Any]
+        ] = None,
+        **kwargs: Optional[Any]
+    ):
         self._queue = []
         self._queryset = queryset
         self._batch_size = batch_size
@@ -179,7 +200,7 @@ class _BulkUpdateOrCreateContextManager:
         self._fields = update_fields
         self._kwargs = kwargs
 
-    def queue(self, obj):
+    def queue(self, obj: Model):
         self._queue.append(obj)
         if len(self._queue) >= self._batch_size:
             self.dump_queue()
@@ -209,5 +230,10 @@ class _BulkUpdateOrCreateContextManager:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(
+        self,
+        type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType]
+    ):
         self.dump_queue()
